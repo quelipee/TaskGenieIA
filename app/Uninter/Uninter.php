@@ -2,6 +2,7 @@
 
 namespace App\Uninter;
 
+use App\Uninter\Services\StudyDataExtractorService;
 use App\Uninter\Services\UninterService;
 use App\Uninter\Services\UninterServiceProof;
 use Illuminate\Support\ServiceProvider;
@@ -27,5 +28,7 @@ class Uninter extends ServiceProvider
         $this->app->singleton(UninterProofContractsInterface::class, function ($app) {
             return new UninterServiceProof(new UninterService());
         });
+        $this->app->singleton(StudyDataExtractorContractsInterface::class,
+            fn() => new StudyDataExtractorService(new UninterService()));
     }
 }
