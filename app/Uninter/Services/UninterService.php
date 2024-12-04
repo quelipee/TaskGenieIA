@@ -2,8 +2,11 @@
 
 namespace App\Uninter\Services;
 
+use App\Models\History;
 use App\Uninter\UninterContractsInterface;
 use GeminiAPI\Client;
+use GeminiAPI\Enums\Role;
+use GeminiAPI\Resources\Content;
 use GeminiAPI\Resources\Parts\TextPart;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
@@ -74,6 +77,27 @@ class UninterService implements UninterContractsInterface
         }
     }
 
+    /**
+     * @throws ConnectionException
+     */
+    public function getSubjectLessonsType(string $nameSubject, string $id): int|array
+    {
+        list($cookies, $headers) = $this->getHeadersAndCookies();
+        $subject = $this->getSubject($nameSubject);
+        $response = Http::withHeaders($headers)->withCookies($cookies, 'uninter.com')
+            ->get("https://univirtus.uninter.com/ava/ava/salaVirtualAtividade/0/EstruturaOferta/{$subject['idSalaVirtualOferta']}/",[
+                'id' => $id,
+                'editar' => 'false',
+                'idSalaVirtualOfertaPai' => '',
+                'idSalaVirtualOfertaAproveitamento' => $subject['idSalaVirtualOfertaAproveitamento']
+            ]);
+//
+        $response = collect($response['salaVirtualAtividades'])->first(fn($item) => $item['nomeTipoAtividade'] == 'Rota de aprendizagem');
+
+        return $response;
+    }
+//6978703 pratica
+//6978702 teorica
     /**
      * @return array
      */
@@ -190,8 +214,12 @@ class UninterService implements UninterContractsInterface
             $textContent = new TextPart('responda essa questao, responda somente com o id alternativa correta(ex: A, B, C, D, E):' .
                 PHP_EOL . $payload[$key]['questao'] . PHP_EOL . $payload[$key]['comando'] . PHP_EOL . $payload[$key]['alternativas']);
 
-            $result = $client->geminiPro()->generateContent($textContent);
-            $responseText = strtolower(trim($result->text()));
+            $idSala = Session::get('idSala');
+            $history = $this->retrieveConversationLog($idSala);
+
+            $result = $client->geminiPro()->startChat();
+            $response = $result->withHistory($history)->sendMessage($textContent);
+            $responseText = strtolower(trim($response->text()));
 
             $idQuestaoAlternativa = match ($responseText) {
                 'a' => $value['alternativas'][0]['id'],
@@ -286,5 +314,23 @@ class UninterService implements UninterContractsInterface
         ->get('https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuario/0/UsuariocId?',[
             'cIdAvaliacao' => $cIdAvaliacao
         ]);
+    }
+    private function retrieveConversationLog(string $idSala): array
+    {
+        $history = [];
+        $entries = History::query()->where('idSala', $idSala)->get();
+
+        foreach ($entries as $historyEntry)
+        {
+            $roleMap = [
+                Role::User->name => Role::User,
+                Role::Model->name => Role::Model,
+            ];
+
+            if (array_key_exists($historyEntry['role'], $roleMap)) {
+                $history[] = Content::text($historyEntry['message'], $roleMap[$historyEntry['role']]);
+            }
+        }
+        return $history;
     }
 }

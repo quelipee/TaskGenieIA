@@ -6,6 +6,7 @@ interface UninterContractsInterface
     public function signInAuthenticated();
     public function getSubjectId(): array|int;
     public function getSubjectLessons(string $nameSubject): array|int;
+    public function getSubjectLessonsType(string $nameSubject, string $id): array|int;
     public function getSubject(string $nameSubject): mixed;
     public function getAllTasks(string $nameSubject): array|int;
     public function getAllActivityQuestions(string $taskId): array|int;

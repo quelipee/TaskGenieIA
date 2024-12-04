@@ -13,9 +13,11 @@ return new class extends Migration
     {
         Schema::create('history', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->timestamps();
-            $table->text('message');
+            $table->string('idSala');
+            $table->string('matter');
+            $table->longText('message');
             $table->text('role');
+            $table->timestamps();
         });
     }
 

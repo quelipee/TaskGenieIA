@@ -6,6 +6,7 @@ use App\Uninter\UninterContractsInterface;
 use App\Uninter\UninterProofContractsInterface;
 use Closure;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Session;
 use JetBrains\PhpStorm\NoReturn;
 
 class Uninter extends Command
@@ -177,7 +178,7 @@ class Uninter extends Command
 
             $name = $this->choice('Qual atividade deseja?', $name_activity);
             $collection_task = collect($task['avaliacaoUsuarios'])->first(fn($item) => $item['avaliacao']['nome'] == $name);
-
+            Session::put('idSala',$task['avaliacaoUsuarios'][0]['salas'][0]['idSalaVirtual']);
             $this->processTask($collection_task);
 
             if ($this->signOut() === 'nao') {
