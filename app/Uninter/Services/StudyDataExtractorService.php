@@ -2,8 +2,11 @@
 
 namespace App\Uninter\Services;
 
+use App\Models\History;
 use App\Uninter\StudyDataExtractorContractsInterface;
 use Exception;
+use GeminiAPI\Enums\Role;
+use GeminiAPI\Resources\Content;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Smalot\PdfParser\Document;
@@ -26,12 +29,33 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
 
         $response = Http::withHeaders($headers)->withCookies($cookies, 'uninter.com')
             ->get("https://conteudosdigitais.uninter.com/materiais/aulas//gradNova/{$year}/{$course}/{$matter}/{$classRoom}/includes//html/impressao.html");
-        if($response->status() != 404){
-            return trim(strip_tags(str_replace(["&nbsp;", "&amp;"], " ", $response->body())));
-        }else{
-            $pdf = $parser->parseFile("https://conteudosdigitais.uninter.com/materiais/aulas//gradNova/{$year}/{$course}/{$matter}/a2/includes//impressao.pdf");
-            return $pdf->getText();
+
+        print_r($response->status() . PHP_EOL);
+        if (!$response->successful()) {
+            try {
+                $pdf = $parser->parseFile("https://conteudosdigitais.uninter.com/materiais/aulas//gradNova/{$year}/{$course}/{$matter}/{$classRoom}/includes//impressao.pdf");
+                $text = $pdf->getText();
+                if (!empty($text)) {
+                    return $text;
+                }
+            } catch (\Exception $e) {
+                echo $e->getMessage();
+            }
+
+            try {
+                $pdf = $parser->parseFile("https://conteudosdigitais.uninter.com/materiais/aulas//gradNova/{$year}/{$course}/{$matter}/{$classRoom}/includes//slides.pdf");
+                $text = $pdf->getText();
+                if (!empty($text)) {
+                    return $text;
+                }
+            } catch (\Exception $e) {
+                echo $e->getMessage();
+            }
+
+            return "Erro ao processar o conteúdo para armazenamento.";
         }
+
+        return trim(strip_tags(str_replace(["&nbsp;", "&amp;"], " ", $response->body())));
     }
 
     /**
@@ -44,31 +68,30 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
             ->get("https://univirtus.uninter.com/ava/atv/AtividadeItemAprendizagem/{$idAtividade}/Atividade?complementar=false");
         $link = $response['atividadeItemAprendizagens'][0]['itemAprendizagemEtiquetas'][1]['texto'];
 
-        function extractDataFromUrl($link): array|null
-        {
-            $pattern = '#/([^/]+)/(\d+)/([^/]+)/([^/]+)/#';
-//            print_r($link);
-            if (preg_match($pattern, $link, $matches)) {
-                return [
-                    'course' => $matches[3],
-                    'year' => $matches[2],
-                    'matter' => $matches[4],
-                ];
-            }
-            return null;
+        return $this->extractDataFromUrl($link);
+    }
+    private function extractDataFromUrl($link): array|null
+    {
+        $pattern = '#/([^/]+)/(\d+)/([^/]+)/([^/]+)/#';
+        if (preg_match($pattern, $link, $matches)) {
+            return [
+                'course' => $matches[3],
+                'year' => $matches[2],
+                'matter' => $matches[4],
+            ];
         }
-
-        return extractDataFromUrl($link);
+        return null;
     }
 
-    public function getIdAtividade(string $id, string $idSalaVirtualOferta, string $idSalaVirtualOfertaPai) : array
+    public function insertSubjectContent(string $text, string $matter,$idSala): void
     {
-        list($cookies , $headers) = $this->uninterService->getHeadersAndCookies();
-        $response = Http::withHeaders($headers)->withCookies($cookies, 'uninter.com')
-            ->get("https://univirtus.uninter.com/ava/ava/SalaVirtualAtividade/{$id}/SalaVirtualEstruturaAtividadeDesempenho/{$idSalaVirtualOferta}",[
-                'idSalaVirtualOfertaPai' => $idSalaVirtualOfertaPai
-            ]);
-        return $response['salaVirtualAtividades'];
+        $history = new History([
+           'idSala' => $idSala,
+           'matter' => $matter,
+           'message' => $text,
+           'role' => Role::Model->name
+        ]);
+        $history->save();
     }
 
     /**
@@ -77,14 +100,15 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
     public function prepareSubjectDataForStorage(string $nameSubject): void
     {
         $lessons = $this->uninterService->getSubjectLessons($nameSubject);
-
-        $payload = $this->uninterService->getSubject($nameSubject);
-        $idSalaVirtualOferta = $payload['idSalaVirtualOfertaPai'];
-        $idSalaVirtualOfertaPai = $payload['idSalaVirtualOfertaAproveitamento'];
-        $id = $lessons['salaVirtualEstruturas'][0]['id'];
-
-        $idAtividade = $this->getIdAtividade($id,$idSalaVirtualOferta,$idSalaVirtualOfertaPai);
-        $info = $this->getInfoMatter($idAtividade[0]['idAtividade']);
-        dd($this->prepareTextForStorage($info['year'],$info['matter'],$info['course'],'a2'));
+        $i = 1;
+        foreach ($lessons['salaVirtualEstruturas'] as $lesson) {
+            if (strtolower($lesson['nome']) != 'trabalho' and $i <= 6){
+                $id = $lesson['id'];
+                $idAtividade =$this->uninterService->getSubjectLessonsType($nameSubject,$id);
+                $info = $this->getInfoMatter($idAtividade['idAtividade']);
+                $text = $this->prepareTextForStorage($info['year'],$info['matter'],$info['course'],"a".$i++);
+                $this->insertSubjectContent($text, $info['matter'],$idAtividade['idSalaVirtual']);
+            }
+        }
     }
 }
