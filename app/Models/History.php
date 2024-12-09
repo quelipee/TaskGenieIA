@@ -14,6 +14,7 @@ class History extends Model
     protected $fillable = [
         'idSala',
         'matter',
+        'title',
         'message',
         'role'
     ];

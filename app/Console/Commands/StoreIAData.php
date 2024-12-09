@@ -41,10 +41,7 @@ class StoreIAData extends Command
 
         foreach ($courses as $course) {
             if ($course['nomeCurso'] === 'CST ANÁLISE E DESENVOLVIMENTO DE SISTEMAS - DISTÂNCIA (2701)' && $this->notCourseInsert($course['nomeSalaVirtual'])){
-
                 print_r($course['nomeSalaVirtual'] . PHP_EOL);
-//                "idSalaVirtual" => 92211
-//                 "idSalaVirtualOferta" => 715813
                 $this->studyDataExtractor->prepareSubjectDataForStorage($course['nomeSalaVirtual']);
             }
         }

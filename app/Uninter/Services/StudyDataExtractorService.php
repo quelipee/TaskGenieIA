@@ -83,12 +83,20 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
         return null;
     }
 
-    public function insertSubjectContent(string $text, string $matter,$idSala): void
+    /**
+     * @throws Exception
+     */
+    public function insertSubjectContent(string $text, string $matter, $idSala, string $title): void
     {
+        $validatedRequest = History::query()->where('title',$title)->exists();
+        if($validatedRequest){
+           throw new Exception('The title already exists. Please choose a different one.');
+        }
         $history = new History([
            'idSala' => $idSala,
            'matter' => $matter,
            'message' => $text,
+           'title' => $title,
            'role' => Role::Model->name
         ]);
         $history->save();
@@ -107,7 +115,7 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
                 $idAtividade =$this->uninterService->getSubjectLessonsType($nameSubject,$id);
                 $info = $this->getInfoMatter($idAtividade['idAtividade']);
                 $text = $this->prepareTextForStorage($info['year'],$info['matter'],$info['course'],"a".$i++);
-                $this->insertSubjectContent($text, $info['matter'],$idAtividade['idSalaVirtual']);
+                $this->insertSubjectContent($text, $info['matter'],$idAtividade['idSalaVirtual'], $lesson['nome']);
             }
         }
     }
