@@ -80,7 +80,7 @@ class UninterService implements UninterContractsInterface
     /**
      * @throws ConnectionException
      */
-    public function getSubjectLessonsType(string $nameSubject, string $id): int|array
+    public function getSubjectLessonsType(string $nameSubject, string $id): int|array|null
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
         $subject = $this->getSubject($nameSubject);
@@ -91,7 +91,7 @@ class UninterService implements UninterContractsInterface
                 'idSalaVirtualOfertaPai' => '',
                 'idSalaVirtualOfertaAproveitamento' => $subject['idSalaVirtualOfertaAproveitamento']
             ]);
-//
+        
         $response = collect($response['salaVirtualAtividades'])->first(fn($item) => $item['nomeTipoAtividade'] == 'Rota de aprendizagem');
 
         return $response;

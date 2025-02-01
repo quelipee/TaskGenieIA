@@ -50,6 +50,7 @@ class StoreIAData extends Command
     {
         return $course != 'Ambientação Inicial' &&
             $course != 'Canal de Comunicação com o Coordenador - ADS/EAD' &&
-            $course != 'Atividade Extensionista I: Tecnologia Aplicada à Inclusão Digital – Levantamento';
+            $course != 'Atividade Extensionista I: Tecnologia Aplicada à Inclusão Digital – Levantamento' &&
+            $course != 'Eletiva I'; // TODO ADJUST ELETIVA I
     }
 }

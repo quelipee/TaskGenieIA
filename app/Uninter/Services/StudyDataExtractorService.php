@@ -112,10 +112,12 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
         foreach ($lessons['salaVirtualEstruturas'] as $lesson) {
             if (strtolower($lesson['nome']) != 'trabalho' and $i <= 6){
                 $id = $lesson['id'];
-                $idAtividade =$this->uninterService->getSubjectLessonsType($nameSubject,$id);
-                $info = $this->getInfoMatter($idAtividade['idAtividade']);
-                $text = $this->prepareTextForStorage($info['year'],$info['matter'],$info['course'],"a".$i++);
-                $this->insertSubjectContent($text, $info['matter'],$idAtividade['idSalaVirtual'], $lesson['nome']);
+                $idAtividade = $this->uninterService->getSubjectLessonsType($nameSubject,$id);
+                if($idAtividade){
+                    $info = $this->getInfoMatter($idAtividade['idAtividade']);
+                    $text = $this->prepareTextForStorage($info['year'],$info['matter'],$info['course'],"a".$i++);
+                    $this->insertSubjectContent($text, $info['matter'],$idAtividade['idSalaVirtual'], $lesson['nome']);
+                }
             }
         }
     }
