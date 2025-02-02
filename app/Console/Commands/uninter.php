@@ -199,7 +199,7 @@ class Uninter extends Command
         while ($this->disable == 'sim') {
             $proof = $this->choice('qual prova deseja?', $name);
             $collection_proof = collect($matter)->first(fn($item) => strtolower($item['salas'][0]['nomeSalaVirtual']) == $proof);
-
+            Session::put('idSala',$collection_proof['salas'][0]['idSalaVirtual']);
             $this->processTask($collection_proof);
 
             if ($this->signOut() === 'nao') {

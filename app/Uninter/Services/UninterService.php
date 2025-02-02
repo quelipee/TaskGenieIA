@@ -91,7 +91,7 @@ class UninterService implements UninterContractsInterface
                 'idSalaVirtualOfertaPai' => '',
                 'idSalaVirtualOfertaAproveitamento' => $subject['idSalaVirtualOfertaAproveitamento']
             ]);
-        
+
         $response = collect($response['salaVirtualAtividades'])->first(fn($item) => $item['nomeTipoAtividade'] == 'Rota de aprendizagem');
 
         return $response;
@@ -193,6 +193,8 @@ class UninterService implements UninterContractsInterface
         $client = new Client(env('GEMINI_API_KEY'));
 
         $payload = [];
+        $idSala = Session::get('idSala');
+        $history = $this->retrieveConversationLog($idSala);
 
         foreach ($alternative as $key => $value) {
             $formatted = '';
@@ -213,9 +215,6 @@ class UninterService implements UninterContractsInterface
             print_r($payload[$key]['alternativas']);
             $textContent = new TextPart('responda essa questao, responda somente com o id alternativa correta(ex: A, B, C, D, E):' .
                 PHP_EOL . $payload[$key]['questao'] . PHP_EOL . $payload[$key]['comando'] . PHP_EOL . $payload[$key]['alternativas']);
-
-            $idSala = Session::get('idSala');
-            $history = $this->retrieveConversationLog($idSala);
 
             $result = $client->geminiPro()->startChat();
             $response = $result->withHistory($history)->sendMessage($textContent);

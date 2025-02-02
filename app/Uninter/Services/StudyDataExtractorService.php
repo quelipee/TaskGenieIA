@@ -5,10 +5,15 @@ namespace App\Uninter\Services;
 use App\Models\History;
 use App\Uninter\StudyDataExtractorContractsInterface;
 use Exception;
+use GeminiAPI\Client;
 use GeminiAPI\Enums\Role;
 use GeminiAPI\Resources\Content;
+use GeminiAPI\Resources\Parts\TextPart;
+use GeminiAPI\Responses\GenerateContentResponse;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Psr\Http\Client\ClientExceptionInterface;
 use Smalot\PdfParser\Document;
 use Smalot\PdfParser\Parser;
 
@@ -55,7 +60,11 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
             return "Erro ao processar o conteúdo para armazenamento.";
         }
 
-        return trim(strip_tags(str_replace(["&nbsp;", "&amp;"], " ", $response->body())));
+        $text = preg_replace(["/\r/", "/\n/", "/\s+/"], " ", strip_tags(str_replace(["&nbsp;", "&amp;"], " ", $response->body())));
+        return trim($text); // Remover espaços extras no início e no final
+
+//        dd($text);
+//        return trim(strip_tags(str_replace(["&nbsp;", "&amp;"], " ", $response->body())));
     }
 
     /**
@@ -104,6 +113,8 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
 
     /**
      * @throws ConnectionException
+     * @throws ClientExceptionInterface
+     * @throws Exception
      */
     public function prepareSubjectDataForStorage(string $nameSubject): void
     {
@@ -116,9 +127,34 @@ class StudyDataExtractorService implements StudyDataExtractorContractsInterface
                 if($idAtividade){
                     $info = $this->getInfoMatter($idAtividade['idAtividade']);
                     $text = $this->prepareTextForStorage($info['year'],$info['matter'],$info['course'],"a".$i++);
-                    $this->insertSubjectContent($text, $info['matter'],$idAtividade['idSalaVirtual'], $lesson['nome']);
+                    $message = $this->formatTextForResumeIA($text);
+                    $this->insertSubjectContent($message, $info['matter'],$idAtividade['idSalaVirtual'], $lesson['nome']);
                 }
             }
         }
+    }
+
+    /**
+     * @throws ClientExceptionInterface
+     */
+    private function formatTextForResumeIA(Document|string $text) : string
+    {
+        $client = new Client(env('GEMINI_API_KEY'));
+        $chunks = str_split($text, 40000);
+        $message = [];
+        foreach ($chunks as $chunk) {
+            try {
+                $response = $client->geminiPro()
+                    ->generateContent(new TextPart('Resuma o seguinte texto: ' . $chunk));
+                $message[] = $response->text();
+
+                sleep(2);
+            } catch (\Exception $e) {
+                Log::error('Erro ao chamar Gemini: ' . $e->getMessage());
+                break;
+            }
+        }
+
+        return implode(" ", $message);
     }
 }
