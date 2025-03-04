@@ -190,7 +190,7 @@ class UninterService implements UninterContractsInterface
     public function insertAlternative(array $alternative) : array|int
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
-        $client = new Client(env('GEMINI_API_KEY'));
+        $client = new Client(config('services.gemini.access_token'));
 
         $payload = [];
         $idSala = Session::get('idSala');
@@ -205,29 +205,16 @@ class UninterService implements UninterContractsInterface
                 }
                  $formatted .= $labels[$index] . ': ' . strip_tags($valor) ."\n";
             }
-            $payload[] = [
-                'id' => $value['id'],
-                'idAvaliacaoUsuario' => $value['idAvaliacaoUsuario'],
-                'questao' => $value['questao'],
-                'comando' => $value['comando'],
-                'alternativas' => $formatted,
-            ];
+            $payload = $this->getPayload($value, $formatted, $payload);
             print_r($payload[$key]['alternativas']);
-            $textContent = new TextPart('responda essa questao, responda somente com o id alternativa correta(ex: A, B, C, D, E):' .
+            $textContent = new TextPart('responda essa questao com base no texto, responda somente com o id alternativa correta(ex: A, B, C, D, E):' .
                 PHP_EOL . $payload[$key]['questao'] . PHP_EOL . $payload[$key]['comando'] . PHP_EOL . $payload[$key]['alternativas']);
 
-            $result = $client->geminiPro()->startChat();
+            $result = $client->geminiPro20Flash001()->startChat();
             $response = $result->withHistory($history)->sendMessage($textContent);
             $responseText = strtolower(trim($response->text()));
-
-            $idQuestaoAlternativa = match ($responseText) {
-                'a' => $value['alternativas'][0]['id'],
-                'b' => $value['alternativas'][1]['id'],
-                'c' => $value['alternativas'][2]['id'],
-                'd' => $value['alternativas'][3]['id'],
-                'e' => $value['alternativas'][4]['id'],
-                default => null,
-            };
+//            dd($value);
+            $idQuestaoAlternativa = $this->getQuestaoAlternativa($responseText, $value['alternativas']);
 
             $response = Http::withHeaders($headers)
                 ->withCookies($cookies, 'uninter.com')
@@ -236,7 +223,7 @@ class UninterService implements UninterContractsInterface
                     'idQuestaoAlternativa' => $idQuestaoAlternativa, // id da alternativa
                     'idAvaliacaoUsuario' => $payload[$key]['idAvaliacaoUsuario'] // id da avaliacao do usuario
                 ]);
-            print_r($payload);
+            print_r($responseText . PHP_EOL);
         }
 
         if ($response->successful())
@@ -331,5 +318,49 @@ class UninterService implements UninterContractsInterface
             }
         }
         return $history;
+    }
+
+    /**
+     * @param string $responseText
+     * @param $alternativas
+     * @return int|null
+     */
+    public function getQuestaoAlternativa(string $responseText, $alternativas) : int | null
+    {
+        foreach ($alternativas as $key => $alternativa){
+            if (isset($alternativa['questaoAlternativaAtributos'][1])){
+                $id = $alternativa['id'];
+                break;
+            }
+            if ($key == 4){
+                return match ($responseText) {
+                    'a' => $alternativas[0]['id'],
+                    'b' => $alternativas[1]['id'],
+                    'c' => $alternativas[2]['id'],
+                    'd' => $alternativas[3]['id'],
+                    'e' => $alternativas[4]['id'],
+                    default => null,
+                };
+            }
+        }
+        return $id;
+    }
+
+    /**
+     * @param mixed $value
+     * @param string $formatted
+     * @param array $payload
+     * @return array
+     */
+    public function getPayload(mixed $value, string $formatted, array $payload): array
+    {
+        $payload[] = [
+            'id' => $value['id'],
+            'idAvaliacaoUsuario' => $value['idAvaliacaoUsuario'],
+            'questao' => $value['questao'],
+            'comando' => $value['comando'],
+            'alternativas' => $formatted,
+        ];
+        return $payload;
     }
 }

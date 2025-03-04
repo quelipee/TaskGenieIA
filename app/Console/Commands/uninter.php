@@ -118,7 +118,9 @@ class Uninter extends Command
             }
             if ($grade['grade'] === null) {
                 $this->processAndLogGrade($grade['cIdAvaliacao'], $grade['try'], $IdAvaliacaoVinculada,$nomeClassificacao);
-                return;
+                if($this->signOut() == 'nao'){
+                    return;
+                };
             };
         }
     }
