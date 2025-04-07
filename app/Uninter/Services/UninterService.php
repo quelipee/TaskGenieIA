@@ -38,17 +38,16 @@ class UninterService implements UninterContractsInterface
     /**
      * @throws ConnectionException
      */
-    public function getSubjectId() : array|int
+    public function getSubjectId(): array|int
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
         $response = Http::withHeaders($headers)
             ->withCookies($cookies, 'uninter.com')
             ->get('https://univirtus.uninter.com/ava/sistema/UsuarioHistoricoCursoOferta/false/Usuario');
 
-        if ($response->successful())
-        {
+        if ($response->successful()) {
             return $response['usuarioHistoricoCursoOfertas'];
-        }else{
+        } else {
             return $response->status();
         }
     }
@@ -56,23 +55,22 @@ class UninterService implements UninterContractsInterface
     /**
      * @throws ConnectionException
      */
-    public function getSubjectLessons($nameSubject) : array|int //ver as aulas da materia
+    public function getSubjectLessons($nameSubject): array|int //ver as aulas da materia
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
         $subject = $this->getSubject($nameSubject);
 
         $response = Http::withHeaders($headers)
             ->withCookies($cookies, 'uninter.com')
-            ->get('https://univirtus.uninter.com/ava/ava/SalaVirtualEstrutura/0/TipoOfertaCriptografado/1?',[
+            ->get('https://univirtus.uninter.com/ava/ava/SalaVirtualEstrutura/0/TipoOfertaCriptografado/1?', [
                 'id' => urldecode($subject['cId']),
                 'idSalaVirtualOferta' => $subject['idSalaVirtualOferta'],
                 'idSalaVirtualOfertaAproveitamento' => $subject['idSalaVirtualOfertaAproveitamento']
             ]);
 
-        if ($response->successful())
-        {
+        if ($response->successful()) {
             return $response->json();
-        } else{
+        } else {
             return $response->status();
         }
     }
@@ -85,7 +83,7 @@ class UninterService implements UninterContractsInterface
         list($cookies, $headers) = $this->getHeadersAndCookies();
         $subject = $this->getSubject($nameSubject);
         $response = Http::withHeaders($headers)->withCookies($cookies, 'uninter.com')
-            ->get("https://univirtus.uninter.com/ava/ava/salaVirtualAtividade/0/EstruturaOferta/{$subject['idSalaVirtualOferta']}/",[
+            ->get("https://univirtus.uninter.com/ava/ava/salaVirtualAtividade/0/EstruturaOferta/{$subject['idSalaVirtualOferta']}/", [
                 'id' => $id,
                 'editar' => 'false',
                 'idSalaVirtualOfertaPai' => '',
@@ -142,7 +140,7 @@ class UninterService implements UninterContractsInterface
     /**
      * @throws ConnectionException
      */
-    public function getAllTasks($nameSubject) : array|int
+    public function getAllTasks($nameSubject): array|int
     {
         $subject = $this->getSubject($nameSubject);
         list($cookies, $headers) = $this->getHeadersAndCookies();
@@ -158,10 +156,9 @@ class UninterService implements UninterContractsInterface
         $response = Http::withHeaders($headers)
             ->withCookies($cookies, 'uninter.com')
             ->get('https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuario/1/paginacao/true?' . $queryParams);
-        if ($response->successful())
-        {
+        if ($response->successful()) {
             return $response->json();
-        } else{
+        } else {
             return $response->status();
         }
     }
@@ -169,16 +166,15 @@ class UninterService implements UninterContractsInterface
     /**
      * @throws ConnectionException
      */
-    public function getAllActivityQuestions(string $taskId) : array|int
+    public function getAllActivityQuestions(string $taskId): array|int
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
         $response = Http::withHeaders($headers)
             ->withCookies($cookies, 'uninter.com')
             ->get("https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuarioHistorico/{$taskId}/Avaliacao?autorizacao=");
-        if ($response->successful())
-        {
+        if ($response->successful()) {
             return $response['avaliacaoUsuarioHistoricos'];
-        }else {
+        } else {
             return $response->status();
         }
     }
@@ -187,7 +183,7 @@ class UninterService implements UninterContractsInterface
      * @throws ConnectionException
      * @throws ClientExceptionInterface
      */
-    public function insertAlternative(array $alternative) : array|int
+    public function insertAlternative(array $alternative): array|int
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
         $client = new Client(config('services.gemini.access_token'));
@@ -200,15 +196,19 @@ class UninterService implements UninterContractsInterface
             $formatted = '';
             $labels = ['A', 'B', 'C', 'D', 'E'];
             foreach ($value['alternativas'] as $index => $quest) {
-                if(isset($quest['questaoAlternativaAtributos'][0]['valor'])){
+                if (isset($quest['questaoAlternativaAtributos'][0]['valor'])) {
                     $valor = $quest['questaoAlternativaAtributos'][0]['valor'];
                 }
-                 $formatted .= $labels[$index] . ': ' . strip_tags($valor) ."\n";
+                $formatted .= $labels[$index] . ': ' . strip_tags($valor) . "\n";
             }
             $payload = $this->getPayload($value, $formatted, $payload);
             print_r($payload[$key]['alternativas']);
             $textContent = new TextPart('responda essa questao com base no texto, responda somente com o id alternativa correta(ex: A, B, C, D, E):' .
-                PHP_EOL . $payload[$key]['questao'] . PHP_EOL . $payload[$key]['comando'] . PHP_EOL . $payload[$key]['alternativas']);
+                PHP_EOL .
+                $payload[$key]['questao'] . PHP_EOL .
+                $payload[$key]['comando'] . PHP_EOL .
+                $payload[$key]['alternativas']);
+
 
             $result = $client->geminiPro20Flash001()->startChat();
             $response = $result->withHistory($history)->sendMessage($textContent);
@@ -218,7 +218,7 @@ class UninterService implements UninterContractsInterface
 
             $response = Http::withHeaders($headers)
                 ->withCookies($cookies, 'uninter.com')
-                ->put('https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuarioHistorico/',[
+                ->put('https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuarioHistorico/', [
                     'id' => $payload[$key]['id'], // esse é o id da questao
                     'idQuestaoAlternativa' => $idQuestaoAlternativa, // id da alternativa
                     'idAvaliacaoUsuario' => $payload[$key]['idAvaliacaoUsuario'] // id da avaliacao do usuario
@@ -226,10 +226,9 @@ class UninterService implements UninterContractsInterface
             print_r($responseText . PHP_EOL);
         }
 
-        if ($response->successful())
-        {
+        if ($response->successful()) {
             Http::withHeaders($headers)->withCookies($cookies, 'uninter.com')
-            ->get("https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuario/{$alternative[0]['idAvaliacaoUsuario']}/Finalizar/1");
+                ->get("https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuario/{$alternative[0]['idAvaliacaoUsuario']}/Finalizar/1");
             return $response->json();
         } else {
             return $response->status();
@@ -240,7 +239,7 @@ class UninterService implements UninterContractsInterface
      * @throws ConnectionException
      * @throws RandomException
      */
-    public function confirmationTry(string $cIdAvaliacao, int $try, string $IdAvaliacaoVinculada) : array|int
+    public function confirmationTry(string $cIdAvaliacao, int $try, string $IdAvaliacaoVinculada): array|int
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
         $params = http_build_query([
@@ -254,14 +253,15 @@ class UninterService implements UninterContractsInterface
         return $response->json();
     }
 
-    public function fetchTopExamGrade(string $cIdAvaliacao) : array|int {
+    public function fetchTopExamGrade(string $cIdAvaliacao): array|int
+    {
         $response = $this->getAllExamScores($cIdAvaliacao);
 
         $grade = 0;
-        foreach($response['avaliacaoUsuarios'] as $assessment){
-            if ($assessment['nota'] != null){
+        foreach ($response['avaliacaoUsuarios'] as $assessment) {
+            if ($assessment['nota'] != null) {
                 $grade = $assessment['nota'] >= $grade ? $assessment['nota'] : $grade;
-            }else{
+            } else {
                 $grade = 0;
             }
         };
@@ -269,21 +269,23 @@ class UninterService implements UninterContractsInterface
         return $grade;
     }
 
-    public function getLastExamScore(string $cIdAvaliacao) : array|int|null {
+    public function getLastExamScore(string $cIdAvaliacao): array|int|null
+    {
         $response = $this->getAllExamScores($cIdAvaliacao);
 
         $grade = [];
-        foreach($response['avaliacaoUsuarios'] as $assessment){
+        foreach ($response['avaliacaoUsuarios'] as $assessment) {
             $grade[] = $assessment['nota'];
         };
 
         return end($grade);
     }
 
-    public function getArrayExamScores(string $cIdAvaliacao) : array{
+    public function getArrayExamScores(string $cIdAvaliacao): array
+    {
         $response = $this->getAllExamScores($cIdAvaliacao);
         $payload = [];
-        foreach($response['avaliacaoUsuarios'] as $grade_and_try) {
+        foreach ($response['avaliacaoUsuarios'] as $grade_and_try) {
             $payload[] = [
                 'try' => $grade_and_try['tentativa'],
                 'grade' => $grade_and_try['nota'],
@@ -297,17 +299,17 @@ class UninterService implements UninterContractsInterface
     {
         list($cookies, $headers) = $this->getHeadersAndCookies();
         return Http::withHeaders($headers)->withCookies($cookies, 'uninter.com')
-        ->get('https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuario/0/UsuariocId?',[
-            'cIdAvaliacao' => $cIdAvaliacao
-        ]);
+            ->get('https://univirtus.uninter.com/ava/bqs/AvaliacaoUsuario/0/UsuariocId?', [
+                'cIdAvaliacao' => $cIdAvaliacao
+            ]);
     }
+
     private function retrieveConversationLog(string $idSala): array
     {
         $history = [];
         $entries = History::query()->where('idSala', $idSala)->get();
 
-        foreach ($entries as $historyEntry)
-        {
+        foreach ($entries as $historyEntry) {
             $roleMap = [
                 Role::User->name => Role::User,
                 Role::Model->name => Role::Model,
@@ -325,14 +327,13 @@ class UninterService implements UninterContractsInterface
      * @param $alternativas
      * @return int|null
      */
-    public function getQuestaoAlternativa(string $responseText, $alternativas) : int | null
+    public function getQuestaoAlternativa(string $responseText, $alternativas): int|null
     {
-        foreach ($alternativas as $key => $alternativa){
-            if (isset($alternativa['questaoAlternativaAtributos'][1])){
-                $id = $alternativa['id'];
-                break;
+        foreach ($alternativas as $key => $alternativa) {
+            if (isset($alternativa['questaoAlternativaAtributos'][1])) {
+                return $alternativa['id'];
             }
-            if ($key == 4){
+            if ($key + 1 == count($alternativas)) {
                 return match ($responseText) {
                     'a' => $alternativas[0]['id'],
                     'b' => $alternativas[1]['id'],
@@ -343,7 +344,6 @@ class UninterService implements UninterContractsInterface
                 };
             }
         }
-        return $id;
     }
 
     /**
